@@ -33,6 +33,7 @@ class FakePaymentManagerMixin:
 class ProductAdminTests(FakePaymentManagerMixin, APITestCase):
     def setUp(self) -> None:
         super().setUp()
+        Product.objects.all().delete()
         self.client.force_login(User.objects.create_superuser(email="admin@example.com", password=PASSWORD))
 
     def submit(self, url: str, **overrides):
