@@ -34,3 +34,17 @@
 ## Особливість проєкту
 
 Інтеграція платіжної системи для придбання цифрових випусків і мерчу, а також можливість фінансової підтримки часопису та благодійного фонду Frontline.Care. Після успішної оплати система автоматично обробляє замовлення та надсилає користувачеві електронний лист із придбаним цифровим випуском.
+
+## Локальний запуск
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # задайте SECRET_KEY
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+Перевірка: `GET http://localhost:8000/api/health/` → `{"status": "ok"}`
