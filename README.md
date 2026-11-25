@@ -38,7 +38,7 @@
 ## Локальний запуск
 
 ```bash
-scripts/start.sh          # створює .venv, ставить залежності, мігрує БД і запускає сервер
+scripts/start.sh [port]   # створює .venv, ставить залежності, мігрує БД і запускає сервер і Kafka consumer
 python manage.py createsuperuser   # (з активованим .venv) адміністратор з роллю admin
 ```
 
@@ -70,9 +70,9 @@ python manage.py createsuperuser   # (з активованим .venv) адмі�
 
 Продукти (випуски, мерч) — дзеркало продуктів payment-manager. Власник `id` — payment-manager.
 
-- **Адмінка → Products → Add:** спочатку `POST /products` у payment-manager, потім продукт зберігається тут з отриманим `id`. Редагування (`PUT`) і видалення (`DELETE`) так само йдуть спершу в payment-manager. Якщо payment-manager відхилив запит або недоступний — помилка показується у формі, локально нічого не змінюється. Запити підписуються короткоживучим admin-JWT від імені користувача адмінки.
+- **Адмінка → Products → Add:** спочатку `POST /products` у payment-manager, потім продукт зберігається тут з отриманим `id`. Редагування (`PUT`) і видалення (`DELETE`) так само йдуть спершу в payment-manager. Якщо payment-manager відхилив запит або недоступний — помилка показується у формі, локально нічого не змінюється. Запити автентифікуються сервісним токеном у заголовку `X-Service-Token` (`PAYMENT_MANAGER_SERVICE_TOKEN` тут = `SERVICE_TOKEN` у payment-manager).
 - Продукт, який уже хтось купив, видалити не можна.
 - **Покупки:** `scripts/consume.sh` (`manage.py consume_payment_events`) читає топік `KAFKA_PAYMENT_STATUS_TOPIC` payment-manager. Лише події зі `status: "success"` записують куплені продукти користувачу; повторна доставка тієї ж події нічого не дублює. Якщо продукт створено напряму в payment-manager, він підтягується через `GET /products/{id}` при першому продажу.
 - `GET /api/me/products/` (Bearer) — продукти поточного користувача.
 
-Consumer має працювати окремим процесом поряд із `runserver`/gunicorn.
+Локально `scripts/start.sh` запускає сервер і consumer разом: Ctrl+C зупиняє обидва, а якщо один із них падає — зупиняється й інший. У продакшені consumer запускається окремим процесом (`scripts/consume.sh`) поряд із gunicorn.
