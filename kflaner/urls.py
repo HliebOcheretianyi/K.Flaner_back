@@ -7,6 +7,7 @@ from kflaner.controllers.auth import (
     RefreshController,
     RegisterController,
 )
+from kflaner.controllers.products import OwnedProductCollectionController
 
 urlpatterns = [
     path("auth/register/", RegisterController.as_view(), name="auth-register"),
@@ -14,4 +15,5 @@ urlpatterns = [
     path("auth/refresh/", RefreshController.as_view(), name="auth-refresh"),
     path("auth/logout/", LogoutController.as_view(), name="auth-logout"),
     path("auth/me/", MeController.as_view(), name="auth-me"),
+    path("me/products/", OwnedProductCollectionController.as_view(), name="owned-products"),
 ]

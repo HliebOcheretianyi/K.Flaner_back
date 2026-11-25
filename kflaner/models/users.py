@@ -87,6 +87,10 @@ class User(AbstractUser):
         record = cls.objects.filter(id=user_id, is_active=True).first()
         return record.to_entity() if record else None
 
+    @classmethod
+    def exists(cls, user_id: UUID) -> bool:
+        return cls.objects.filter(id=user_id).exists()
+
     def to_entity(self) -> UserEntity:
         return UserEntity(
             id=self.id,

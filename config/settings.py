@@ -103,7 +103,6 @@ REST_FRAMEWORK = {
     },
 }
 
-# Shared with payment-manager: same secret, issuer and audience on both sides.
 JWT_SECRET = env('JWT_SECRET')
 if len(JWT_SECRET.encode()) < 32:
     raise ImproperlyConfigured('JWT_SECRET must be at least 32 bytes (payment-manager requirement).')
@@ -113,3 +112,20 @@ ACCESS_TOKEN_LIFETIME = timedelta(minutes=env.int('ACCESS_TOKEN_LIFETIME_MINUTES
 REFRESH_TOKEN_LIFETIME = timedelta(days=env.int('REFRESH_TOKEN_LIFETIME_DAYS', default=30))
 
 CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS')
+
+PAYMENT_MANAGER_URL = env('PAYMENT_MANAGER_URL', default='http://localhost:8080')
+PAYMENT_MANAGER_TIMEOUT_SECONDS = env.float('PAYMENT_MANAGER_TIMEOUT_SECONDS', default=10.0)
+PAYMENT_MANAGER_SERVICE_TOKEN = env('PAYMENT_MANAGER_SERVICE_TOKEN')
+if len(PAYMENT_MANAGER_SERVICE_TOKEN.encode()) < 32:
+    raise ImproperlyConfigured('PAYMENT_MANAGER_SERVICE_TOKEN must be at least 32 bytes (payment-manager requirement).')
+
+KAFKA_BROKERS = env.list('KAFKA_BROKERS', default=['localhost:9094'])
+KAFKA_PAYMENT_STATUS_TOPIC = env('KAFKA_PAYMENT_STATUS_TOPIC', default='payment.status-changed')
+KAFKA_CONSUMER_GROUP = env('KAFKA_CONSUMER_GROUP', default='kflaner-back')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'loggers': {'kflaner': {'handlers': ['console'], 'level': env('LOG_LEVEL', default='INFO')}},
+}

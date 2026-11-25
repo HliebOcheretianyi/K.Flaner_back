@@ -65,3 +65,14 @@ python manage.py createsuperuser   # (з активованим .venv) адмі�
 - `access_token` — JWT HS256 з полями `id` (UUID), `role` (`user` | `admin`), `exp`, `iat`, `iss`, `aud`; його ж приймає payment-manager. Роль `editor` у токені передається як `user`.
 - `refresh_token` — випадковий рядок, у БД зберігається лише його SHA-256 хеш.
 - Помилки: `{"error": {"code", "message", "field"?}}`.
+
+## Продукти та покупки
+
+Продукти (випуски, мерч) — дзеркало продуктів payment-manager. Власник `id` — payment-manager.
+
+- **Адмінка → Products → Add:** спочатку `POST /products` у payment-manager, потім продукт зберігається тут з отриманим `id`. Редагування (`PUT`) і видалення (`DELETE`) так само йдуть спершу в payment-manager. Якщо payment-manager відхилив запит або недоступний — помилка показується у формі, локально нічого не змінюється. Запити підписуються короткоживучим admin-JWT від імені користувача адмінки.
+- Продукт, який уже хтось купив, видалити не можна.
+- **Покупки:** `scripts/consume.sh` (`manage.py consume_payment_events`) читає топік `KAFKA_PAYMENT_STATUS_TOPIC` payment-manager. Лише події зі `status: "success"` записують куплені продукти користувачу; повторна доставка тієї ж події нічого не дублює. Якщо продукт створено напряму в payment-manager, він підтягується через `GET /products/{id}` при першому продажу.
+- `GET /api/me/products/` (Bearer) — продукти поточного користувача.
+
+Consumer має працювати окремим процесом поряд із `runserver`/gunicorn.

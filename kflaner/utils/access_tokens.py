@@ -13,8 +13,6 @@ CLOCK_SKEW_LEEWAY_SECONDS = 30
 
 
 class JWTAccessTokens:
-    """HS256 tokens in the format payment-manager verifies: {id, role, exp[, iss, aud]}."""
-
     @property
     def lifetime_seconds(self) -> int:
         return int(settings.ACCESS_TOKEN_LIFETIME.total_seconds())

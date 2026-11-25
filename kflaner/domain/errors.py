@@ -24,3 +24,7 @@ class ConflictError(DomainError):
 
 class AuthenticationError(DomainError):
     code = "authentication_failed"
+
+
+class ExternalServiceError(DomainError):
+    code = "external_service_error"

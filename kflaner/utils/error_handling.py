@@ -9,6 +9,7 @@ from kflaner.domain.errors import (
     AuthenticationError,
     ConflictError,
     DomainError,
+    ExternalServiceError,
     NotFoundError,
     ValidationError,
 )
@@ -18,6 +19,7 @@ STATUS_BY_ERROR_TYPE: dict[type[DomainError], int] = {
     AuthenticationError: status.HTTP_401_UNAUTHORIZED,
     NotFoundError: status.HTTP_404_NOT_FOUND,
     ConflictError: status.HTTP_409_CONFLICT,
+    ExternalServiceError: status.HTTP_502_BAD_GATEWAY,
     DomainError: status.HTTP_400_BAD_REQUEST,
 }
 
