@@ -38,13 +38,30 @@
 ## Локальний запуск
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # задайте SECRET_KEY
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver
+scripts/start.sh          # створює .venv, ставить залежності, мігрує БД і запускає сервер
+python manage.py createsuperuser   # (з активованим .venv) адміністратор з роллю admin
 ```
 
-Перевірка: `GET http://localhost:8000/api/health/` → `{"status": "ok"}`
+У `.env` обов'язково задайте `SECRET_KEY` і `JWT_SECRET` (≥ 32 байти). `JWT_SECRET`, `JWT_ISSUER` і `JWT_AUDIENCE` мають збігатися з налаштуваннями payment-manager.
+
+Тести: `.venv/bin/python manage.py test kflaner`
+
+## Архітектура
+
+`kflaner/` поділено на шари: `domain/` (сутності та помилки) → `interfaces/` (Protocol-контракти) → `use_cases/` (бізнес-логіка) → `models/` (Django-моделі як репозиторії) → `controllers/` (DRF `APIView`). Спільне — у `utils/`.
+
+## Автентифікація
+
+| Метод | Шлях | Тіло | Відповідь |
+|---|---|---|---|
+| POST | `/api/auth/register/` | `email, password, first_name, last_name` | `201` пара токенів |
+| POST | `/api/auth/login/` | `email, password` | `200` пара токенів |
+| POST | `/api/auth/refresh/` | `refresh_token` | `200` нова пара (старий refresh стає недійсним) |
+| POST | `/api/auth/logout/` | `refresh_token` | `204` |
+| GET | `/api/auth/me/` | — (`Authorization: Bearer <access_token>`) | `200` профіль |
+
+Пара токенів: `{"access_token", "refresh_token", "expires_in", "token_type": "Bearer"}`.
+
+- `access_token` — JWT HS256 з полями `id` (UUID), `role` (`user` | `admin`), `exp`, `iat`, `iss`, `aud`; його ж приймає payment-manager. Роль `editor` у токені передається як `user`.
+- `refresh_token` — випадковий рядок, у БД зберігається лише його SHA-256 хеш.
+- Помилки: `{"error": {"code", "message", "field"?}}`.

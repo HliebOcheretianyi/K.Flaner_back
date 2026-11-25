@@ -1,6 +1,8 @@
+from datetime import timedelta
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -24,7 +26,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'apps.users',
+    'kflaner',
 ]
 
 MIDDLEWARE = [
@@ -61,7 +63,7 @@ DATABASES = {
     'default': env.db('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
 }
 
-AUTH_USER_MODEL = 'users.User'
+AUTH_USER_MODEL = 'kflaner.User'
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -88,12 +90,26 @@ MAILERS = {
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'kflaner.utils.authentication.BearerTokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
+    'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
+    'DEFAULT_PARSER_CLASSES': ['rest_framework.parsers.JSONParser'],
+    'EXCEPTION_HANDLER': 'kflaner.utils.error_handling.handle_exception',
+    'DEFAULT_THROTTLE_RATES': {
+        'auth': env('AUTH_THROTTLE_RATE', default='10/min'),
+    },
 }
 
+# Shared with payment-manager: same secret, issuer and audience on both sides.
+JWT_SECRET = env('JWT_SECRET')
+if len(JWT_SECRET.encode()) < 32:
+    raise ImproperlyConfigured('JWT_SECRET must be at least 32 bytes (payment-manager requirement).')
+JWT_ISSUER = env('JWT_ISSUER', default='')
+JWT_AUDIENCE = env('JWT_AUDIENCE', default='')
+ACCESS_TOKEN_LIFETIME = timedelta(minutes=env.int('ACCESS_TOKEN_LIFETIME_MINUTES', default=15))
+REFRESH_TOKEN_LIFETIME = timedelta(days=env.int('REFRESH_TOKEN_LIFETIME_DAYS', default=30))
+
 CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS')
-CORS_ALLOW_CREDENTIALS = True
