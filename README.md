@@ -38,13 +38,41 @@
 ## Локальний запуск
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # задайте SECRET_KEY
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver
+scripts/start.sh [port]   # створює .venv, ставить залежності, мігрує БД і запускає сервер і Kafka consumer
+python manage.py createsuperuser   # (з активованим .venv) адміністратор з роллю admin
 ```
 
-Перевірка: `GET http://localhost:8000/api/health/` → `{"status": "ok"}`
+У `.env` обов'язково задайте `SECRET_KEY` і `JWT_SECRET` (≥ 32 байти). `JWT_SECRET`, `JWT_ISSUER` і `JWT_AUDIENCE` мають збігатися з налаштуваннями payment-manager.
+
+Тести: `.venv/bin/python manage.py test kflaner`
+
+## Архітектура
+
+`kflaner/` поділено на шари: `domain/` (сутності та помилки) → `interfaces/` (Protocol-контракти) → `use_cases/` (бізнес-логіка) → `models/` (Django-моделі як репозиторії) → `controllers/` (DRF `APIView`). Спільне — у `utils/`.
+
+## Автентифікація
+
+| Метод | Шлях | Тіло | Відповідь |
+|---|---|---|---|
+| POST | `/api/auth/register/` | `email, password, first_name, last_name` | `201` пара токенів |
+| POST | `/api/auth/login/` | `email, password` | `200` пара токенів |
+| POST | `/api/auth/refresh/` | `refresh_token` | `200` нова пара (старий refresh стає недійсним) |
+| POST | `/api/auth/logout/` | `refresh_token` | `204` |
+| GET | `/api/auth/me/` | — (`Authorization: Bearer <access_token>`) | `200` профіль |
+
+Пара токенів: `{"access_token", "refresh_token", "expires_in", "token_type": "Bearer"}`.
+
+- `access_token` — JWT HS256 з полями `id` (UUID), `role` (`user` | `admin`), `exp`, `iat`, `iss`, `aud`; його ж приймає payment-manager. Роль `editor` у токені передається як `user`.
+- `refresh_token` — випадковий рядок, у БД зберігається лише його SHA-256 хеш.
+- Помилки: `{"error": {"code", "message", "field"?}}`.
+
+## Продукти та покупки
+
+Продукти (випуски, мерч) — дзеркало продуктів payment-manager. Власник `id` — payment-manager.
+
+- **Адмінка → Products → Add:** спочатку `POST /products` у payment-manager, потім продукт зберігається тут з отриманим `id`. Редагування (`PUT`) і видалення (`DELETE`) так само йдуть спершу в payment-manager. Якщо payment-manager відхилив запит або недоступний — помилка показується у формі, локально нічого не змінюється. Запити автентифікуються сервісним токеном у заголовку `X-Service-Token` (`PAYMENT_MANAGER_SERVICE_TOKEN` тут = `SERVICE_TOKEN` у payment-manager).
+- Продукт, який уже хтось купив, видалити не можна.
+- **Покупки:** `scripts/consume.sh` (`manage.py consume_payment_events`) читає топік `KAFKA_PAYMENT_STATUS_TOPIC` payment-manager. Лише події зі `status: "success"` записують куплені продукти користувачу; повторна доставка тієї ж події нічого не дублює. Якщо продукт створено напряму в payment-manager, він підтягується через `GET /products/{id}` при першому продажу.
+- `GET /api/me/products/` (Bearer) — продукти поточного користувача.
+
+Локально `scripts/start.sh` запускає сервер і consumer разом: Ctrl+C зупиняє обидва, а якщо один із них падає — зупиняється й інший. У продакшені consumer запускається окремим процесом (`scripts/consume.sh`) поряд із gunicorn.
